@@ -11,6 +11,9 @@ using Microsoft.AspNetCore.Internal;
 
 namespace Microsoft.AspNetCore.Http.Connections
 {
+    /// <summary>
+    /// Provides methods to handle parsing and writing the negotiate protocol.
+    /// </summary>
     public static class NegotiateProtocol
     {
         // Use C#7.3's ReadOnlySpan<byte> optimization for static data https://vcsjones.com/2019/02/01/csharp-readonly-span-bytes-static/
@@ -33,6 +36,11 @@ namespace Microsoft.AspNetCore.Http.Connections
         private const string ProtocolVersionPropertyName = "ProtocolVersion";
         private static ReadOnlySpan<byte> ProtocolVersionPropertyNameBytes => new byte[] { (byte)'P', (byte)'r', (byte)'o', (byte)'t', (byte)'o', (byte)'c', (byte)'o', (byte)'l', (byte)'V', (byte)'e', (byte)'r', (byte)'s', (byte)'i', (byte)'o', (byte)'n' };
 
+        /// <summary>
+        /// Writes the <paramref name="response"/> as json into <paramref name="output"/>.
+        /// </summary>
+        /// <param name="response">The <see cref="NegotiationResponse"/> to write to json.</param>
+        /// <param name="output">The <see cref="IBufferWriter{T}"/> to write the <see cref="NegotiationResponse"/> to.</param>
         public static void WriteResponse(NegotiationResponse response, IBufferWriter<byte> output)
         {
             var writer = new Utf8JsonWriter(output, new JsonWriterState(new JsonWriterOptions() { SkipValidation = true }));
@@ -90,6 +98,11 @@ namespace Microsoft.AspNetCore.Http.Connections
             writer.Flush(isFinalBlock: true);
         }
 
+        /// <summary>
+        /// Parses the <see cref="NegotiationResponse"/> from the given <paramref name="content"/>.
+        /// </summary>
+        /// <param name="content">The data that contains the serialized <see cref="NegotiationResponse"/>.</param>
+        /// <returns>The deserialized <see cref="NegotiationResponse"/>.</returns>
         public static NegotiationResponse ParseResponse(ReadOnlySpan<byte> content)
         {
             try
@@ -194,10 +207,13 @@ namespace Microsoft.AspNetCore.Http.Connections
         }
 
         /// <summary>
+        /// Parses the <see cref="NegotiationResponse"/> from the given <paramref name="content"/>.
         /// <para>
         ///     This method is obsolete and will be removed in a future version.
         ///     The recommended alternative is <see cref="ParseResponse(ReadOnlySpan{byte})" />.
         /// </para>
+        /// <param name="content">The data that contains the serialized <see cref="NegotiationResponse"/>.</param>
+        /// <returns>The deserialized <see cref="NegotiationResponse"/>.</returns>
         /// </summary>
         [Obsolete("This method is obsolete and will be removed in a future version. The recommended alternative is ParseResponse(ReadOnlySpan{byte}).")]
         public static NegotiationResponse ParseResponse(Stream content) =>
