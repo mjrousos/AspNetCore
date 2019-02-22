@@ -39,31 +39,6 @@ namespace Microsoft.AspNetCore.Internal
             var position = buffer.PositionOf(TextMessageFormatter.RecordSeparator);
             if (position == null)
             {
-                var span = buffer.First.Span;
-                var index = span.IndexOf(TextMessageFormatter.RecordSeparator);
-                if (index == -1)
-                {
-                    payload = default;
-                    return false;
-                }
-
-                payload = buffer.Slice(0, index);
-
-                buffer = buffer.Slice(index + 1);
-
-                return true;
-            }
-            else
-            {
-                return TryParseMessageMultiSegment(ref buffer, out payload);
-            }
-        }
-
-        private static bool TryParseMessageMultiSegment(ref ReadOnlySequence<byte> buffer, out ReadOnlySequence<byte> payload)
-        {
-            var position = buffer.PositionOf(TextMessageFormatter.RecordSeparator);
-            if (position == null)
-            {
                 payload = default;
                 return false;
             }

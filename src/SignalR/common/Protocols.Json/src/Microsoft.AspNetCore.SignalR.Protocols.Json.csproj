@@ -9,7 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="$(SignalRSharedSourceRoot)JsonUtils.cs" Link="Internal\JsonUtils.cs" />
     <Compile Include="$(SignalRSharedSourceRoot)SystemTextJsonExtensions.cs" Link="Internal\SystemTextJsonExtensions.cs" />
     <Compile Include="$(SignalRSharedSourceRoot)TextMessageFormatter.cs" Link="TextMessageFormatter.cs" />
     <Compile Include="$(SignalRSharedSourceRoot)TextMessageParser.cs" Link="TextMessageParser.cs" />
@@ -18,11 +17,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- <Reference Include="Microsoft.AspNetCore.SignalR.Common" />
-    <Reference Include="Newtonsoft.Json" /> -->
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Common" Version="$(MicrosoftAspNetCoreAppPackageVersion)" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.1" />
-    <PackageReference Include="System.Text.JsonLab.Serialization" Version="0.1.1-e190201-1" />
+    <!-- <Reference Include="Microsoft.AspNetCore.SignalR.Common" />-->
+    <Reference Include="Microsoft.AspNetCore.SignalR.Common" />
+    <Reference Include="System.Text.JsonLab.Serialization" />
   </ItemGroup>
 
 </Project>
