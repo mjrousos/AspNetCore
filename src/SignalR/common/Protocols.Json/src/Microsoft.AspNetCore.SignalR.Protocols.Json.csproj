@@ -17,9 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- <Reference Include="Microsoft.AspNetCore.SignalR.Common" />-->
     <Reference Include="Microsoft.AspNetCore.SignalR.Common" />
-    <Reference Include="System.Text.JsonLab.Serialization" />
   </ItemGroup>
 
 </Project>
