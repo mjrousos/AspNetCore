@@ -26,7 +26,7 @@
     <Reference Include="Microsoft.AspNetCore.SignalR.Common" />
     <Reference Include="Microsoft.AspNetCore.SignalR.Core" />
     <Reference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
-    <ProjectReference Include="..\..\common\Protocols.Json\src\Microsoft.AspNetCore.SignalR.Protocols.Json.csproj" />
+    <Reference Include="Microsoft.AspNetCore.SignalR.Protocols.Json" />
     <Reference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" />
     <Reference Include="Microsoft.Extensions.DependencyInjection" />
     <Reference Include="Microsoft.Extensions.ValueStopwatch.Sources" />
@@ -35,8 +35,4 @@
     <Reference Include="System.Threading.Channels" />
     <Reference Include="System.Threading.Tasks.Extensions" />
   </ItemGroup>
-
-  <PropertyGroup>
-    <PackageConflictPreferredPackages>Microsoft.Private.CoreFx.NETCoreApp;runtime.win-x64.Microsoft.Private.CoreFx.NETCoreApp;$(PackageConflictPreferredPackages)</PackageConflictPreferredPackages>
-  </PropertyGroup>
 </Project>

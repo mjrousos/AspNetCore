@@ -65,7 +65,7 @@ namespace Microsoft.AspNetCore.Internal
             if (reader.TokenType == JsonTokenType.StartObject || reader.TokenType == JsonTokenType.StartArray)
             {
                 int depth = reader.CurrentDepth;
-                while (reader.Read() && depth < reader.CurrentDepth)
+                while (reader.Read() && depth <= reader.CurrentDepth)
                 {
                 }
             }

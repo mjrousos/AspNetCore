@@ -35,7 +35,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns>The value of <paramref name="builder"/></returns>
         public static TBuilder AddNewtonsoftJsonProtocol<TBuilder>(this TBuilder builder, Action<NewtonsoftJsonHubProtocolOptions> configure) where TBuilder : ISignalRBuilder
         {
-            //builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<IHubProtocol, NewtonsoftJsonHubProtocol>());
+            builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<IHubProtocol, NewtonsoftJsonHubProtocol>());
             builder.Services.Configure(configure);
             return builder;
         }

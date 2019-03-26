@@ -20,6 +20,8 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
     /// </summary>
     public class JsonHubProtocol : IHubProtocol
     {
+        // TODO: private static ReadOnlySpan<byte> UrlPropertyNameBytes => new byte[] { (byte)'u', (byte)'r', (byte)'l' };
+        // Use C#7.3's ReadOnlySpan<byte> optimization for static data https://vcsjones.com/2019/02/01/csharp-readonly-span-bytes-static/
         private const string ResultPropertyName = "result";
         private static readonly byte[] ResultPropertyNameBytes = Encoding.UTF8.GetBytes(ResultPropertyName);
         private const string ItemPropertyName = "item";
@@ -685,11 +687,11 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
             try
             {
                 var bytes = reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan;
-                if (type == typeof(DateTime))
-                {
-                    return DateTime.Parse(Encoding.UTF8.GetString(bytes));
-                }
-                else
+                //if (type == typeof(DateTime))
+                //{
+                //    return DateTime.Parse(Encoding.UTF8.GetString(bytes));
+                //}
+                //else
                 {
                     if (reader.TokenType == JsonTokenType.String)
                     {
@@ -746,7 +748,7 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                         var bytes = reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan;
                         if (paramTypes[paramIndex] == typeof(DateTime))
                         {
-                            arguments[paramIndex] = DateTime.Parse(Encoding.UTF8.GetString(bytes));
+                            //arguments[paramIndex] = DateTime.Parse(Encoding.UTF8.GetString(bytes));
                         }
                         else
                         {

@@ -15,7 +15,6 @@
       https://dotnetfeed.blob.core.windows.net/aspnet-aspnetcore-tooling/index.json;
       https://dotnetfeed.blob.core.windows.net/dotnet-core/index.json;
       https://api.nuget.org/v3/index.json;
-      https://dotnet.myget.org/F/dotnet-corefxlab/api/v3/index.json;
       https://dotnet.myget.org/F/aspnetcore-dev/api/v3/index.json;
       https://dotnet.myget.org/F/aspnetcore-master/api/v3/index.json;
       https://dotnet.myget.org/F/aspnetcore-tools/api/v3/index.json;

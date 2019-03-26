@@ -29,7 +29,6 @@ namespace SignalRSamples
                 // Faster pings for testing
                 options.KeepAliveInterval = TimeSpan.FromSeconds(5);
             })
-            .AddJsonProtocol()
             .AddMessagePackProtocol();
             //.AddStackExchangeRedis();
         }
