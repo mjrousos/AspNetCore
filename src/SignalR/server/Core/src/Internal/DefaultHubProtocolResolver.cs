@@ -32,6 +32,7 @@ namespace Microsoft.AspNetCore.SignalR.Internal
                     Log.OverwroteSignalRProtocol(_logger, protocol.Name, protocol.GetType());
                     _availableProtocols[protocol.Name] = protocol;
                 }
+                else
                 {
                     Log.RegisteredSignalRProtocol(_logger, protocol.Name, protocol.GetType());
                     _availableProtocols.Add(protocol.Name, protocol);

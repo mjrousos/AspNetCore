@@ -23,23 +23,23 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
         // TODO: private static ReadOnlySpan<byte> UrlPropertyNameBytes => new byte[] { (byte)'u', (byte)'r', (byte)'l' };
         // Use C#7.3's ReadOnlySpan<byte> optimization for static data https://vcsjones.com/2019/02/01/csharp-readonly-span-bytes-static/
         private const string ResultPropertyName = "result";
-        private static readonly byte[] ResultPropertyNameBytes = Encoding.UTF8.GetBytes(ResultPropertyName);
+        private static ReadOnlySpan<byte> ResultPropertyNameBytes => new byte[] { (byte)'r', (byte)'e', (byte)'s', (byte)'u', (byte)'l', (byte)'t' };
         private const string ItemPropertyName = "item";
-        private static readonly byte[] ItemPropertyNameBytes = Encoding.UTF8.GetBytes(ItemPropertyName);
+        private static ReadOnlySpan<byte> ItemPropertyNameBytes => new byte[] { (byte)'i', (byte)'t', (byte)'e', (byte)'m' };
         private const string InvocationIdPropertyName = "invocationId";
-        private static readonly byte[] InvocationIdPropertyNameBytes = Encoding.UTF8.GetBytes(InvocationIdPropertyName);
+        private static ReadOnlySpan<byte> InvocationIdPropertyNameBytes => new byte[] { (byte)'i', (byte)'n', (byte)'v', (byte)'o', (byte)'c', (byte)'a', (byte)'t', (byte)'i', (byte)'o', (byte)'n', (byte)'I', (byte)'d' };
         private const string StreamIdsPropertyName = "streamIds";
-        private static readonly byte[] StreamIdsPropertyNameBytes = Encoding.UTF8.GetBytes(StreamIdsPropertyName);
+        private static ReadOnlySpan<byte> StreamIdsPropertyNameBytes => new byte[] { (byte)'s', (byte)'t', (byte)'r', (byte)'e', (byte)'a', (byte)'m', (byte)'I', (byte)'d', (byte)'s' };
         private const string TypePropertyName = "type";
-        private static readonly byte[] TypePropertyNameBytes = Encoding.UTF8.GetBytes(TypePropertyName);
+        private static ReadOnlySpan<byte> TypePropertyNameBytes => new byte[] { (byte)'t', (byte)'y', (byte)'p', (byte)'e' };
         private const string ErrorPropertyName = "error";
-        private static readonly byte[] ErrorPropertyNameBytes = Encoding.UTF8.GetBytes(ErrorPropertyName);
+        private static ReadOnlySpan<byte> ErrorPropertyNameBytes => new byte[] { (byte)'e', (byte)'r', (byte)'r', (byte)'o', (byte)'r' };
         private const string TargetPropertyName = "target";
-        private static readonly byte[] TargetPropertyNameBytes = Encoding.UTF8.GetBytes(TargetPropertyName);
+        private static ReadOnlySpan<byte> TargetPropertyNameBytes => new byte[] { (byte)'t', (byte)'a', (byte)'r', (byte)'g', (byte)'e', (byte)'t' };
         private const string ArgumentsPropertyName = "arguments";
-        private static readonly byte[] ArgumentsPropertyNameBytes = Encoding.UTF8.GetBytes(ArgumentsPropertyName);
+        private static ReadOnlySpan<byte> ArgumentsPropertyNameBytes => new byte[] { (byte)'a', (byte)'r', (byte)'g', (byte)'u', (byte)'m', (byte)'e', (byte)'n', (byte)'t', (byte)'s' };
         private const string HeadersPropertyName = "headers";
-        private static readonly byte[] HeadersPropertyNameBytes = Encoding.UTF8.GetBytes(HeadersPropertyName);
+        private static ReadOnlySpan<byte> HeadersPropertyNameBytes => new byte[] { (byte)'h', (byte)'e', (byte)'a', (byte)'d', (byte)'e', (byte)'r', (byte)'s' };
 
         private static readonly string ProtocolName = "json";
         private static readonly int ProtocolVersion = 1;
@@ -109,8 +109,8 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
         {
             try
             {
-                // We parse using the JsonTextReader directly but this has a problem. Some of our properties are dependent on other properties
-                // and since reading the json might be unordered, we need to store the parsed content as JToken to re-parse when true types are known.
+                // We parse using the Utf8JsonReader directly but this has a problem. Some of our properties are dependent on other properties
+                // and since reading the json might be unordered, we need to store the parsed content as JsonDocument to re-parse when true types are known.
                 // if we're lucky and the state we need to directly parse is available, then we'll use it.
 
                 int? type = null;
@@ -124,199 +124,210 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                 var hasArguments = false;
                 object[] arguments = null;
                 string[] streamIds = null;
-                long startArgumentsToken = 0;
-                long endArgumentsToken = 0;
-                long startItemsToken = 0;
-                long endItemsToken = 0;
-                long startResultToken = 0;
-                long endResultToken = 0;
+                JsonDocument argumentsToken = null;
+                JsonDocument itemsToken = null;
+                JsonDocument resultToken = null;
                 ExceptionDispatchInfo argumentBindingException = null;
                 Dictionary<string, string> headers = null;
                 var completed = false;
 
-                //var b = new byte[] { 123, 34, 116, 121, 112, 101, 34, 58, 49, 44, 34, 105, 110, 118, 111, 99, 97, 116, 105, 111, 110, 73, 100, 34, 58, 34, 49, 50, 51, 34, 44, 34, 116, 97, 114, 103, 101, 116, 34, 58, 34, 84, 97, 114, 103, 101, 116, 34, 44, 34, 97, 114, 103, 117, 109, 101, 110, 116, 115, 34, 58, 91, 49, 44, 34, 70, 111, 111, 34, 44, 50, 46, 48, 93, 125, 30 };
-
                 var reader = new Utf8JsonReader(input, isFinalBlock: true, state: default);
 
-                //using (var reader = JsonUtils.CreateJsonTextReader(textReader))
+                reader.CheckRead();
+
+                // We're always parsing a JSON object
+                reader.EnsureObjectStart();
+
+                do
                 {
-                    //reader.DateParseHandling = DateParseHandling.None;
-
-                    reader.CheckRead();
-
-                    // We're always parsing a JSON object
-                    reader.EnsureObjectStart();
-
-                    do
+                    switch (reader.TokenType)
                     {
-                        switch (reader.TokenType)
-                        {
-                            case JsonTokenType.PropertyName:
-                                var memberName = reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan;
+                        case JsonTokenType.PropertyName:
+                            var memberName = reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan;
 
-                                if (memberName.SequenceEqual(TypePropertyNameBytes))
+                            if (memberName.SequenceEqual(TypePropertyNameBytes))
+                            {
+                                type = reader.ReadAsInt32(TypePropertyName);
+
+                                if (type == null)
                                 {
-                                    type = reader.ReadAsInt32(TypePropertyName);
-
-                                    if (type == null)
-                                    {
-                                        throw new InvalidDataException($"Missing required property '{TypePropertyName}'.");
-                                    }
+                                    throw new InvalidDataException($"Missing required property '{TypePropertyName}'.");
                                 }
-                                else if (memberName.SequenceEqual(InvocationIdPropertyNameBytes))
+                            }
+                            else if (memberName.SequenceEqual(InvocationIdPropertyNameBytes))
+                            {
+                                invocationId = reader.ReadAsString(InvocationIdPropertyName);
+                            }
+                            else if (memberName.SequenceEqual(StreamIdsPropertyNameBytes))
+                            {
+                                reader.CheckRead();
+
+                                if (reader.TokenType != JsonTokenType.StartArray)
                                 {
-                                    invocationId = reader.ReadAsString(InvocationIdPropertyName);
+                                    throw new InvalidDataException($"Expected '{StreamIdsPropertyName}' to be of type {reader.GetTokenString()}.");
                                 }
-                                else if (memberName.SequenceEqual(StreamIdsPropertyNameBytes))
+
+                                var newStreamIds = new List<string>();
+                                reader.Read();
+                                while (reader.TokenType != JsonTokenType.EndArray)
                                 {
-                                    reader.CheckRead();
-
-                                    if (reader.TokenType != JsonTokenType.StartArray)
-                                    {
-                                        throw new InvalidDataException($"Expected '{StreamIdsPropertyName}' to be of type {reader.GetTokenString()}.");
-                                    }
-
-                                    var newStreamIds = new List<string>();
+                                    newStreamIds.Add(reader.GetString());
                                     reader.Read();
-                                    while (reader.TokenType != JsonTokenType.EndArray)
-                                    {
-                                        newStreamIds.Add(reader.GetString());
-                                        reader.Read();
-                                    }
-
-                                    streamIds = newStreamIds.ToArray();
                                 }
-                                else if (memberName.SequenceEqual(TargetPropertyNameBytes))
-                                {
-                                    target = reader.ReadAsString(TargetPropertyName);
-                                }
-                                else if (memberName.SequenceEqual(ErrorPropertyNameBytes))
-                                {
-                                    error = reader.ReadAsString(ErrorPropertyName);
-                                }
-                                else if (memberName.SequenceEqual(ResultPropertyNameBytes))
-                                {
-                                    hasResult = true;
 
-                                    if (string.IsNullOrEmpty(invocationId))
-                                    {
-                                        reader.CheckRead();
+                                streamIds = newStreamIds.ToArray();
+                            }
+                            else if (memberName.SequenceEqual(TargetPropertyNameBytes))
+                            {
+                                target = reader.ReadAsString(TargetPropertyName);
+                            }
+                            else if (memberName.SequenceEqual(ErrorPropertyNameBytes))
+                            {
+                                error = reader.ReadAsString(ErrorPropertyName);
+                            }
+                            else if (memberName.SequenceEqual(ResultPropertyNameBytes))
+                            {
+                                hasResult = true;
 
-                                        // If we don't have an invocation id then we need to store it as a JToken so we can parse it later
-                                        startResultToken = reader.BytesConsumed;
-                                        int depth = reader.CurrentDepth;
-                                        while (reader.Read() && depth <= reader.CurrentDepth)
-                                        {
-                                        }
-                                        endResultToken = reader.BytesConsumed;
-                                    }
-                                    else
-                                    {
-                                        // If we have an invocation id already we can parse the end result
-                                        var returnType = binder.GetReturnType(invocationId);
-
-                                        reader.Read();
-
-                                        var bytes = reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan;
-                                        result = JsonSerializer.Parse(bytes, returnType);
-                                    }
-                                }
-                                else if (memberName.SequenceEqual(ItemPropertyNameBytes))
+                                if (string.IsNullOrEmpty(invocationId))
                                 {
                                     reader.CheckRead();
 
-                                    hasItem = true;
+                                    // If we don't have an invocation id then we need to store it as a JToken so we can parse it later
+                                    var startResultToken = reader.BytesConsumed;
+                                    reader.Skip();
+                                    var endResultToken = reader.BytesConsumed;
 
-                                    string id = null;
-                                    if (!string.IsNullOrEmpty(invocationId))
-                                    {
-                                        id = invocationId;
-                                    }
-                                    else
-                                    {
-                                        // If we don't have an id yet then we need to store it as a JToken to parse later
-                                        startItemsToken = reader.BytesConsumed;
-                                        int depth = reader.CurrentDepth;
-                                        while (reader.Read() && depth <= reader.CurrentDepth)
-                                        {
-                                        }
-                                        endItemsToken = reader.BytesConsumed;
-                                        continue;
-                                    }
-
-                                    try
-                                    {
-                                        var itemType = binder.GetStreamItemType(id);
-
-                                        var bytes = reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan;
-                                        item = JsonSerializer.Parse(bytes, itemType);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        return new StreamBindingFailureMessage(id, ExceptionDispatchInfo.Capture(ex));
-                                    }
-                                }
-                                else if (memberName.SequenceEqual(ArgumentsPropertyNameBytes))
-                                {
-                                    reader.CheckRead();
-
-                                    int initialDepth = reader.CurrentDepth;
-                                    if (reader.TokenType != JsonTokenType.StartArray)
-                                    {
-                                        throw new InvalidDataException($"Expected '{ArgumentsPropertyName}' to be of type {reader.GetTokenString()}.");
-                                    }
-
-                                    hasArguments = true;
-
-                                    if (string.IsNullOrEmpty(target))
-                                    {
-                                        // We don't know the method name yet so just parse an array of generic JArray
-                                        startArgumentsToken = reader.BytesConsumed;
-                                        int depth = reader.CurrentDepth;
-                                        while (reader.Read() && depth <= reader.CurrentDepth)
-                                        {
-                                        }
-                                        endArgumentsToken = reader.BytesConsumed;
-                                    }
-                                    else
-                                    {
-                                        try
-                                        {
-                                            var paramTypes = binder.GetParameterTypes(target);
-                                            arguments = BindArguments(ref reader, paramTypes);
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            argumentBindingException = ExceptionDispatchInfo.Capture(ex);
-
-                                            // Could be at any point in argument array JSON when an error is thrown
-                                            // Read until the end of the argument JSON array
-                                            while (reader.CurrentDepth == initialDepth && reader.TokenType == JsonTokenType.StartArray ||
-                                                   reader.CurrentDepth > initialDepth)
-                                            {
-                                                reader.CheckRead();
-                                            }
-                                        }
-                                    }
-                                }
-                                else if (memberName.SequenceEqual(HeadersPropertyNameBytes))
-                                {
-                                    reader.CheckRead();
-                                    //headers = ReadHeaders(reader);
+                                    // TODO: JsonDocument.Parse(ref reader);
+                                    var jsonArraySequence = input.Slice(startResultToken - 1, endResultToken - startResultToken + 1);
+                                    resultToken = JsonDocument.Parse(jsonArraySequence);
                                 }
                                 else
                                 {
-                                    reader.CheckRead();
+                                    // If we have an invocation id already we can parse the end result
+                                    var returnType = binder.GetReturnType(invocationId);
+
+                                    var startResultToken = reader.BytesConsumed;
                                     reader.Skip();
+                                    var endResultToken = reader.BytesConsumed;
+
+                                    // TODO: JsonDocument.Parse(ref reader);
+                                    var jsonArraySequence = input.Slice(startResultToken - 1, endResultToken - startResultToken + 1);
+                                    using var token = JsonDocument.Parse(jsonArraySequence);
+                                    result = BindType(token.RootElement, returnType);
                                 }
-                                break;
-                            case JsonTokenType.EndObject:
-                                completed = true;
-                                break;
-                        }
+                            }
+                            else if (memberName.SequenceEqual(ItemPropertyNameBytes))
+                            {
+                                reader.CheckRead();
+
+                                hasItem = true;
+
+                                string id = null;
+                                if (!string.IsNullOrEmpty(invocationId))
+                                {
+                                    id = invocationId;
+                                }
+                                else
+                                {
+                                    // If we don't have an id yet then we need to store it as a JToken to parse later
+                                    var startItemsToken = reader.BytesConsumed;
+                                    reader.Skip();
+                                    var endItemsToken = reader.BytesConsumed;
+
+                                    // TODO: JsonDocument.Parse(ref reader);
+                                    var jsonArraySequence = input.Slice(startItemsToken - 1, endItemsToken - startItemsToken + 1);
+                                    itemsToken = JsonDocument.Parse(jsonArraySequence);
+                                    continue;
+                                }
+
+                                try
+                                {
+                                    var itemType = binder.GetStreamItemType(id);
+
+                                    var startItemsToken = reader.BytesConsumed;
+                                    reader.Skip();
+                                    var endItemsToken = reader.BytesConsumed;
+
+                                    // TODO: JsonDocument.Parse(ref reader);
+                                    var jsonArraySequence = input.Slice(startItemsToken - 1, endItemsToken - startItemsToken + 1);
+                                    var token = JsonDocument.Parse(jsonArraySequence);
+                                    result = BindType(token.RootElement, itemType);
+                                }
+                                catch (Exception ex)
+                                {
+                                    return new StreamBindingFailureMessage(id, ExceptionDispatchInfo.Capture(ex));
+                                }
+                            }
+                            else if (memberName.SequenceEqual(ArgumentsPropertyNameBytes))
+                            {
+                                reader.CheckRead();
+
+                                int initialDepth = reader.CurrentDepth;
+                                if (reader.TokenType != JsonTokenType.StartArray)
+                                {
+                                    throw new InvalidDataException($"Expected '{ArgumentsPropertyName}' to be of type {reader.GetTokenString()}.");
+                                }
+
+                                hasArguments = true;
+
+                                if (string.IsNullOrEmpty(target))
+                                {
+                                    // We don't know the method name yet so just parse an array of generic JArray
+                                    var startArgumentsToken = reader.BytesConsumed;
+                                    reader.Skip();
+                                    var endArgumentsToken = reader.BytesConsumed;
+
+                                    // TODO: JsonDocument.Parse(ref reader);
+                                    var jsonArraySequence = input.Slice(startArgumentsToken - 1, endArgumentsToken - startArgumentsToken + 1);
+                                    argumentsToken = JsonDocument.Parse(jsonArraySequence);
+                                }
+                                else
+                                {
+                                    try
+                                    {
+                                        var paramTypes = binder.GetParameterTypes(target);
+
+                                        // TODO: JsonDocument.Parse(ref reader);
+                                        var startItemsToken = reader.BytesConsumed;
+                                        reader.Skip();
+                                        var endItemsToken = reader.BytesConsumed;
+                                        var jsonArraySequence = input.Slice(startItemsToken - 1, endItemsToken - startItemsToken + 1);
+
+                                        using var token = JsonDocument.Parse(jsonArraySequence);
+                                        arguments = BindTypes(token.RootElement, paramTypes);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        argumentBindingException = ExceptionDispatchInfo.Capture(ex);
+
+                                        // Could be at any point in argument array JSON when an error is thrown
+                                        // Read until the end of the argument JSON array
+                                        while (reader.CurrentDepth == initialDepth && reader.TokenType == JsonTokenType.StartArray ||
+                                                reader.CurrentDepth > initialDepth)
+                                        {
+                                            reader.CheckRead();
+                                        }
+                                    }
+                                }
+                            }
+                            else if (memberName.SequenceEqual(HeadersPropertyNameBytes))
+                            {
+                                reader.CheckRead();
+                                headers = ReadHeaders(ref reader);
+                            }
+                            else
+                            {
+                                reader.CheckRead();
+                                reader.Skip();
+                            }
+                            break;
+                        case JsonTokenType.EndObject:
+                            completed = true;
+                            break;
                     }
-                    while (!completed && reader.CheckRead());
                 }
+                while (!completed && reader.CheckRead());
 
                 HubMessage message;
 
@@ -324,18 +335,21 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                 {
                     case HubProtocolConstants.InvocationMessageType:
                         {
-                            if (startArgumentsToken != 0)
+                            if (argumentsToken != null)
                             {
                                 // We weren't able to bind the arguments because they came before the 'target', so try to bind now that we've read everything.
                                 try
                                 {
                                     var paramTypes = binder.GetParameterTypes(target);
-                                    var jsonArraySequence = input.Slice(startArgumentsToken - 1, endArgumentsToken - startArgumentsToken + 1);
-                                    arguments = BindArguments(jsonArraySequence, paramTypes);
+                                    arguments = BindTypes(argumentsToken.RootElement, paramTypes);
                                 }
                                 catch (Exception ex)
                                 {
                                     argumentBindingException = ExceptionDispatchInfo.Capture(ex);
+                                }
+                                finally
+                                {
+                                    argumentsToken.Dispose();
                                 }
                             }
 
@@ -346,18 +360,21 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                         break;
                     case HubProtocolConstants.StreamInvocationMessageType:
                         {
-                            if (startArgumentsToken != 0)
+                            if (argumentsToken != null)
                             {
                                 // We weren't able to bind the arguments because they came before the 'target', so try to bind now that we've read everything.
                                 try
                                 {
                                     var paramTypes = binder.GetParameterTypes(target);
-                                    var jsonArraySequence = input.Slice(startArgumentsToken - 1, endArgumentsToken - startArgumentsToken + 1);
-                                    arguments = BindArguments(jsonArraySequence, paramTypes);
+                                    arguments = BindTypes(argumentsToken.RootElement, paramTypes);
                                 }
                                 catch (Exception ex)
                                 {
                                     argumentBindingException = ExceptionDispatchInfo.Capture(ex);
+                                }
+                                finally
+                                {
+                                    argumentsToken.Dispose();
                                 }
                             }
 
@@ -367,29 +384,38 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                         }
                         break;
                     case HubProtocolConstants.StreamItemMessageType:
-                        if (startItemsToken != 0)
+                        if (itemsToken != null)
                         {
                             try
                             {
                                 var returnType = binder.GetReturnType(invocationId);
-                                var jsonArraySequence = input.Slice(startItemsToken - 1, endItemsToken - startItemsToken + 1);
-                                item = BindArgument(jsonArraySequence, returnType);
+                                item = BindType(itemsToken.RootElement, returnType);
                             }
                             catch (JsonReaderException ex)
                             {
                                 message = new StreamBindingFailureMessage(invocationId, ExceptionDispatchInfo.Capture(ex));
                                 break;
-                            };
+                            }
+                            finally
+                            {
+                                itemsToken.Dispose();
+                            }
                         }
 
                         message = BindStreamItemMessage(invocationId, item, hasItem, binder);
                         break;
                     case HubProtocolConstants.CompletionMessageType:
-                        if (startResultToken != 0)
+                        if (resultToken != null)
                         {
-                            var returnType = binder.GetReturnType(invocationId);
-                            var jsonArraySequence = input.Slice(startResultToken - 1, endResultToken - startResultToken + 1);
-                            result = BindArgument(jsonArraySequence, returnType);
+                            try
+                            {
+                                var returnType = binder.GetReturnType(invocationId);
+                                result = BindType(resultToken.RootElement, returnType);
+                            }
+                            finally
+                            {
+                                resultToken.Dispose();
+                            }
                         }
 
                         message = BindCompletionMessage(invocationId, error, result, hasResult, binder);
@@ -414,6 +440,41 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
             {
                 throw new InvalidDataException("Error reading JSON.", jrex);
             }
+        }
+
+        private Dictionary<string, string> ReadHeaders(ref Utf8JsonReader reader)
+        {
+            var headers = new Dictionary<string, string>(StringComparer.Ordinal);
+
+            if (reader.TokenType != JsonTokenType.StartObject)
+            {
+                throw new InvalidDataException($"Expected '{HeadersPropertyName}' to be of type {JsonTokenType.StartObject}.");
+            }
+
+            while (reader.Read())
+            {
+                switch (reader.TokenType)
+                {
+                    case JsonTokenType.PropertyName:
+                        var propertyName = reader.GetString();
+
+                        reader.CheckRead();
+
+                        if (reader.TokenType != JsonTokenType.String)
+                        {
+                            throw new InvalidDataException($"Expected header '{propertyName}' to be of type {JsonTokenType.String}.");
+                        }
+
+                        headers[propertyName] = reader.GetString();
+                        break;
+                    case JsonTokenType.Comment:
+                        break;
+                    case JsonTokenType.EndObject:
+                        return headers;
+                }
+            }
+
+            throw new JsonReaderException("Unexpected end when reading message headers", 0, 0);
         }
 
         private void WriteMessageCore(HubMessage message, IBufferWriter<byte> stream)
@@ -484,8 +545,9 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
             }
             else if (message.HasResult)
             {
-                //writer.WritePropertyName(ResultPropertyName);
-                //PayloadSerializer.Serialize(writer, message.Result);
+                // TODO: JsonElement.WriteTo(ref writer, ResultPropertyNameBytes, escape: false);
+                var bytes = JsonSerializer.ToBytes(message.Result, message.Result.GetType());
+                // TODO: JsonElement.WriteValueTo(ref writer, bytes, escape: false);
             }
         }
 
@@ -497,8 +559,9 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
         private void WriteStreamItemMessage(StreamItemMessage message, ref Utf8JsonWriter writer)
         {
             WriteInvocationId(message, ref writer);
-            //writer.WritePropertyName(ItemPropertyName);
-            //PayloadSerializer.Serialize(writer, message.Item);
+            // TODO: JsonElement.WriteTo(ref writer, ItemPropertyNameBytes, escape: false);
+            var bytes = JsonSerializer.ToBytes(message.Item, message.Item.GetType());
+            // TODO: JsonElement.WriteValueTo(ref writer, bytes, escape: false);
         }
 
         private void WriteInvocationMessage(IBufferWriter<byte> stream, InvocationMessage message, ref Utf8JsonWriter writer)
@@ -675,67 +738,34 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
             return reader.Read();
         }
 
-        private object BindArgument(ReadOnlySequence<byte> arrayBytes, Type type)
+        private object BindType(JsonElement jsonObject, Type type)
         {
-            var reader = new Utf8JsonReader(arrayBytes, false, default);
-            reader.Read();
-            return BindArgument(ref reader, type);
-        }
-
-        private object BindArgument(ref Utf8JsonReader reader, Type type)
-        {
-            try
+            if (type == typeof(DateTime))
             {
-                var bytes = reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan;
-                //if (type == typeof(DateTime))
-                //{
-                //    return DateTime.Parse(Encoding.UTF8.GetString(bytes));
-                //}
-                //else
-                {
-                    if (reader.TokenType == JsonTokenType.String)
-                    {
-                        var b = new byte[bytes.Length + 2];
-                        b[0] = 34;
-                        bytes.CopyTo(b.AsSpan().Slice(1, bytes.Length));
-                        b[bytes.Length + 1] = 34;
-                        bytes = b.AsSpan();
-                    }
-                    return JsonSerializer.Parse(bytes, type);
-                }
+                // TODO: return jsonObject.GetDateTime();
             }
-            catch (Exception ex)
+            else if (type == typeof(DateTimeOffset))
             {
-                throw new InvalidDataException("Error binding arguments. Make sure that the types of the provided values match the types of the hub method being invoked.", ex);
+                // TODO: return jsonObject.GetDateTimeOffset();
             }
+
+            return JsonSerializer.Parse(jsonObject.GetRawText(), type);
         }
 
-        private object[] BindArguments(ReadOnlySequence<byte> arrayBytes, IReadOnlyList<Type> paramTypes)
-        {
-            var reader = new Utf8JsonReader(arrayBytes, false, default);
-            reader.Read();
-            return BindArguments(ref reader, paramTypes);
-        }
-
-        private object[] BindArguments(ref Utf8JsonReader reader, IReadOnlyList<Type> paramTypes)
+        private object[] BindTypes(JsonElement jsonArray, IReadOnlyList<Type> paramTypes)
         {
             object[] arguments = null;
             var paramIndex = 0;
-            var argumentsCount = 0;
+            var argumentsCount = jsonArray.GetArrayLength();
             var paramCount = paramTypes.Count;
 
-            while (ReadArgumentAsType(ref reader, paramTypes, paramIndex))
+            if (argumentsCount != paramCount)
             {
-                if (reader.TokenType == JsonTokenType.EndArray)
-                {
-                    if (argumentsCount != paramCount)
-                    {
-                        throw new InvalidDataException($"Invocation provides {argumentsCount} argument(s) but target expects {paramCount}.");
-                    }
+                throw new InvalidDataException($"Invocation provides {argumentsCount} argument(s) but target expects {paramCount}.");
+            }
 
-                    return arguments ?? Array.Empty<object>();
-                }
-
+            foreach (var element in jsonArray.EnumerateArray())
+            {
                 if (arguments == null)
                 {
                     arguments = new object[paramCount];
@@ -743,33 +773,8 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
 
                 try
                 {
-                    if (paramIndex < paramCount)
-                    {
-                        var bytes = reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan;
-                        if (paramTypes[paramIndex] == typeof(DateTime))
-                        {
-                            //arguments[paramIndex] = DateTime.Parse(Encoding.UTF8.GetString(bytes));
-                        }
-                        else
-                        {
-                            if (reader.TokenType == JsonTokenType.String)
-                            {
-                                var b = new byte[bytes.Length + 2];
-                                b[0] = 34;
-                                bytes.CopyTo(b.AsSpan().Slice(1, bytes.Length));
-                                b[bytes.Length + 1] = 34;
-                                bytes = b.AsSpan();
-                            }
-                            arguments[paramIndex] = JsonSerializer.Parse(bytes, paramTypes[paramIndex]);
-                        }
-                    }
-                    else
-                    {
-                        reader.Skip();
-                    }
-
-                    argumentsCount++;
-                    paramIndex++;
+                    arguments[paramIndex] = BindType(element, paramTypes[paramIndex]);
+                    ++paramIndex;
                 }
                 catch (Exception ex)
                 {
@@ -777,7 +782,7 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                 }
             }
 
-            throw new JsonReaderException("Unexpected end when reading JSON", 0, 0);
+            return arguments ?? Array.Empty<object>();
         }
 
         private CloseMessage BindCloseMessage(string error)
