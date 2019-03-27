@@ -198,7 +198,7 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                                     reader.Skip();
                                     var endResultToken = reader.BytesConsumed;
 
-                                    // TODO: JsonDocument.Parse(ref reader);
+                                    // TODO: JsonDocument.ReadFrom(ref reader);
                                     var jsonArraySequence = input.Slice(startResultToken - 1, endResultToken - startResultToken + 1);
                                     resultToken = JsonDocument.Parse(jsonArraySequence);
                                 }
@@ -211,7 +211,7 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                                     reader.Skip();
                                     var endResultToken = reader.BytesConsumed;
 
-                                    // TODO: JsonDocument.Parse(ref reader);
+                                    // TODO: JsonDocument.ReadFrom(ref reader);
                                     var jsonArraySequence = input.Slice(startResultToken - 1, endResultToken - startResultToken + 1);
                                     using var token = JsonDocument.Parse(jsonArraySequence);
                                     result = BindType(token.RootElement, returnType);
@@ -235,7 +235,7 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                                     reader.Skip();
                                     var endItemsToken = reader.BytesConsumed;
 
-                                    // TODO: JsonDocument.Parse(ref reader);
+                                    // TODO: JsonDocument.ReadFrom(ref reader);
                                     var jsonArraySequence = input.Slice(startItemsToken - 1, endItemsToken - startItemsToken + 1);
                                     itemsToken = JsonDocument.Parse(jsonArraySequence);
                                     continue;
@@ -249,7 +249,7 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                                     reader.Skip();
                                     var endItemsToken = reader.BytesConsumed;
 
-                                    // TODO: JsonDocument.Parse(ref reader);
+                                    // TODO: JsonDocument.ReadFrom(ref reader);
                                     var jsonArraySequence = input.Slice(startItemsToken - 1, endItemsToken - startItemsToken + 1);
                                     var token = JsonDocument.Parse(jsonArraySequence);
                                     result = BindType(token.RootElement, itemType);
@@ -278,7 +278,7 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                                     reader.Skip();
                                     var endArgumentsToken = reader.BytesConsumed;
 
-                                    // TODO: JsonDocument.Parse(ref reader);
+                                    // TODO: JsonDocument.ReadFrom(ref reader);
                                     var jsonArraySequence = input.Slice(startArgumentsToken - 1, endArgumentsToken - startArgumentsToken + 1);
                                     argumentsToken = JsonDocument.Parse(jsonArraySequence);
                                 }
@@ -288,7 +288,7 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                                     {
                                         var paramTypes = binder.GetParameterTypes(target);
 
-                                        // TODO: JsonDocument.Parse(ref reader);
+                                        // TODO: JsonDocument.ReadFrom(ref reader);
                                         var startItemsToken = reader.BytesConsumed;
                                         reader.Skip();
                                         var endItemsToken = reader.BytesConsumed;
