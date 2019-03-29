@@ -5,8 +5,8 @@ using Microsoft.AspNetCore.SignalR.Protocol;
 
 namespace Microsoft.AspNetCore.SignalR.Common.Tests.Internal.Protocol
 {
-    public class JsonHubProtocolTests : JsonHubProtocolTestsBase
+    public class NewtonsoftJsonHubProtocolTests : JsonHubProtocolTestsBase
     {
-        protected override IHubProtocol JsonHubProtocol => new JsonHubProtocol();
+        protected override IHubProtocol JsonHubProtocol => new NewtonsoftJsonHubProtocol();
     }
 }

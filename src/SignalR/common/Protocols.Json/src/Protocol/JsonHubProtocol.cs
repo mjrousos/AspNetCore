@@ -189,10 +189,10 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                             {
                                 hasResult = true;
 
+                                reader.CheckRead();
+
                                 if (string.IsNullOrEmpty(invocationId))
                                 {
-                                    reader.CheckRead();
-
                                     // If we don't have an invocation id then we need to store it as a JToken so we can parse it later
                                     var startResultToken = reader.BytesConsumed;
                                     reader.Skip();
