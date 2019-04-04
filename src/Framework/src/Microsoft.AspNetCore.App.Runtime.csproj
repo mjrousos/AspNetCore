@@ -119,6 +119,11 @@ This package is an internal implementation of the .NET Core SDK and is not meant
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Workaround for https://github.com/dotnet/core-setup/issues/5665 -->
+    <ItemGroup>
+      <PackageConflictPlatformManifests Include="hackedManifest.txt" />
+    </ItemGroup>
+
     <!-- Note: do not add _TransitiveExternalAspNetCoreAppReference to this list. This is intentionally not listed as a direct package reference. -->
     <Reference Include="@(AspNetCoreAppReference);@(AspNetCoreAppReferenceAndPackage);@(ExternalAspNetCoreAppReference)">
       <IncludeAssets>Runtime;Native</IncludeAssets>
