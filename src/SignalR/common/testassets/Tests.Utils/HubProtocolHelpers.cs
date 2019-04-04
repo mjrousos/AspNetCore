@@ -15,16 +15,15 @@ namespace Microsoft.AspNetCore.SignalR.Tests
 
         private static readonly IHubProtocol MessagePackHubProtocol = new MessagePackHubProtocol();
 
+        // TODO: Add NewtonsoftJsonHubProtocol
         public static readonly List<string> AllProtocolNames = new List<string>
         {
-            NewtonsoftJsonHubProtocol.Name,
             MessagePackHubProtocol.Name,
             JsonHubProtocol.Name
         };
 
         public static readonly IList<IHubProtocol> AllProtocols = new List<IHubProtocol>()
         {
-            NewtonsoftJsonHubProtocol,
             MessagePackHubProtocol,
             JsonHubProtocol
         };

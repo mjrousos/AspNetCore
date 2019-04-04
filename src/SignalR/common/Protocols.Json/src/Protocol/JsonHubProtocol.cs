@@ -20,7 +20,6 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
     /// </summary>
     public class JsonHubProtocol : IHubProtocol
     {
-        // TODO: private static ReadOnlySpan<byte> UrlPropertyNameBytes => new byte[] { (byte)'u', (byte)'r', (byte)'l' };
         // Use C#7.3's ReadOnlySpan<byte> optimization for static data https://vcsjones.com/2019/02/01/csharp-readonly-span-bytes-static/
         private const string ResultPropertyName = "result";
         private static ReadOnlySpan<byte> ResultPropertyNameBytes => new byte[] { (byte)'r', (byte)'e', (byte)'s', (byte)'u', (byte)'l', (byte)'t' };
@@ -143,9 +142,7 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                     switch (reader.TokenType)
                     {
                         case JsonTokenType.PropertyName:
-                            var memberName = reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan;
-
-                            if (memberName.SequenceEqual(TypePropertyNameBytes))
+                            if (reader.TextEquals(TypePropertyNameBytes))
                             {
                                 type = reader.ReadAsInt32(TypePropertyName);
 
@@ -154,11 +151,11 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                                     throw new InvalidDataException($"Missing required property '{TypePropertyName}'.");
                                 }
                             }
-                            else if (memberName.SequenceEqual(InvocationIdPropertyNameBytes))
+                            else if (reader.TextEquals(InvocationIdPropertyNameBytes))
                             {
                                 invocationId = reader.ReadAsString(InvocationIdPropertyName);
                             }
-                            else if (memberName.SequenceEqual(StreamIdsPropertyNameBytes))
+                            else if (reader.TextEquals(StreamIdsPropertyNameBytes))
                             {
                                 reader.CheckRead();
 
@@ -177,15 +174,15 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
 
                                 streamIds = newStreamIds.ToArray();
                             }
-                            else if (memberName.SequenceEqual(TargetPropertyNameBytes))
+                            else if (reader.TextEquals(TargetPropertyNameBytes))
                             {
                                 target = reader.ReadAsString(TargetPropertyName);
                             }
-                            else if (memberName.SequenceEqual(ErrorPropertyNameBytes))
+                            else if (reader.TextEquals(ErrorPropertyNameBytes))
                             {
                                 error = reader.ReadAsString(ErrorPropertyName);
                             }
-                            else if (memberName.SequenceEqual(ResultPropertyNameBytes))
+                            else if (reader.TextEquals(ResultPropertyNameBytes))
                             {
                                 hasResult = true;
 
@@ -194,30 +191,23 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                                 if (string.IsNullOrEmpty(invocationId))
                                 {
                                     // If we don't have an invocation id then we need to store it as a JToken so we can parse it later
-                                    var startResultToken = reader.BytesConsumed;
-                                    reader.Skip();
-                                    var endResultToken = reader.BytesConsumed;
-
-                                    // TODO: JsonDocument.ReadFrom(ref reader);
-                                    var jsonArraySequence = input.Slice(startResultToken - 1, endResultToken - startResultToken + 1);
-                                    resultToken = JsonDocument.Parse(jsonArraySequence);
+                                    resultToken = JsonDocument.ParseValue(ref reader);
                                 }
                                 else
                                 {
                                     // If we have an invocation id already we can parse the end result
                                     var returnType = binder.GetReturnType(invocationId);
-
-                                    var startResultToken = reader.BytesConsumed;
-                                    reader.Skip();
-                                    var endResultToken = reader.BytesConsumed;
-
-                                    // TODO: JsonDocument.ReadFrom(ref reader);
-                                    var jsonArraySequence = input.Slice(startResultToken - 1, endResultToken - startResultToken + 1);
-                                    using var token = JsonDocument.Parse(jsonArraySequence);
-                                    result = BindType(token.RootElement, returnType);
+                                    if (reader.TokenType == JsonTokenType.Null)
+                                    {
+                                    }
+                                    else
+                                    {
+                                        using var token = JsonDocument.ParseValue(ref reader);
+                                        result = BindType(token.RootElement, returnType);
+                                    }
                                 }
                             }
-                            else if (memberName.SequenceEqual(ItemPropertyNameBytes))
+                            else if (reader.TextEquals(ItemPropertyNameBytes))
                             {
                                 reader.CheckRead();
 
@@ -231,42 +221,29 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                                 else
                                 {
                                     // If we don't have an id yet then we need to store it as a JToken to parse later
-                                    var startItemsToken = reader.BytesConsumed;
-                                    reader.Skip();
-                                    var endItemsToken = reader.BytesConsumed;
-
-                                    // TODO: JsonDocument.ReadFrom(ref reader);
-                                    var jsonArraySequence = input.Slice(startItemsToken - 1, endItemsToken - startItemsToken + 1);
-                                    itemsToken = JsonDocument.Parse(jsonArraySequence);
+                                    itemsToken = JsonDocument.ParseValue(ref reader);
                                     continue;
                                 }
 
                                 try
                                 {
                                     var itemType = binder.GetStreamItemType(id);
-
-                                    var startItemsToken = reader.BytesConsumed;
-                                    reader.Skip();
-                                    var endItemsToken = reader.BytesConsumed;
-
-                                    // TODO: JsonDocument.ReadFrom(ref reader);
-                                    var jsonArraySequence = input.Slice(startItemsToken - 1, endItemsToken - startItemsToken + 1);
-                                    var token = JsonDocument.Parse(jsonArraySequence);
-                                    result = BindType(token.RootElement, itemType);
+                                    using var token = JsonDocument.ParseValue(ref reader);
+                                    item = BindType(token.RootElement, itemType);
                                 }
                                 catch (Exception ex)
                                 {
                                     return new StreamBindingFailureMessage(id, ExceptionDispatchInfo.Capture(ex));
                                 }
                             }
-                            else if (memberName.SequenceEqual(ArgumentsPropertyNameBytes))
+                            else if (reader.TextEquals(ArgumentsPropertyNameBytes))
                             {
                                 reader.CheckRead();
 
                                 int initialDepth = reader.CurrentDepth;
                                 if (reader.TokenType != JsonTokenType.StartArray)
                                 {
-                                    throw new InvalidDataException($"Expected '{ArgumentsPropertyName}' to be of type {reader.GetTokenString()}.");
+                                    throw new InvalidDataException($"Expected '{ArgumentsPropertyName}' to be of type {SystemTextJsonExtensions.GetTokenString(JsonTokenType.StartArray)}.");
                                 }
 
                                 hasArguments = true;
@@ -274,27 +251,14 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                                 if (string.IsNullOrEmpty(target))
                                 {
                                     // We don't know the method name yet so just parse an array of generic JArray
-                                    var startArgumentsToken = reader.BytesConsumed;
-                                    reader.Skip();
-                                    var endArgumentsToken = reader.BytesConsumed;
-
-                                    // TODO: JsonDocument.ReadFrom(ref reader);
-                                    var jsonArraySequence = input.Slice(startArgumentsToken - 1, endArgumentsToken - startArgumentsToken + 1);
-                                    argumentsToken = JsonDocument.Parse(jsonArraySequence);
+                                    argumentsToken = JsonDocument.ParseValue(ref reader);
                                 }
                                 else
                                 {
                                     try
                                     {
                                         var paramTypes = binder.GetParameterTypes(target);
-
-                                        // TODO: JsonDocument.ReadFrom(ref reader);
-                                        var startItemsToken = reader.BytesConsumed;
-                                        reader.Skip();
-                                        var endItemsToken = reader.BytesConsumed;
-                                        var jsonArraySequence = input.Slice(startItemsToken - 1, endItemsToken - startItemsToken + 1);
-
-                                        using var token = JsonDocument.Parse(jsonArraySequence);
+                                        using var token = JsonDocument.ParseValue(ref reader);
                                         arguments = BindTypes(token.RootElement, paramTypes);
                                     }
                                     catch (Exception ex)
@@ -311,7 +275,7 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                                     }
                                 }
                             }
-                            else if (memberName.SequenceEqual(HeadersPropertyNameBytes))
+                            else if (reader.TextEquals(HeadersPropertyNameBytes))
                             {
                                 reader.CheckRead();
                                 headers = ReadHeaders(ref reader);
@@ -388,7 +352,7 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                         {
                             try
                             {
-                                var returnType = binder.GetReturnType(invocationId);
+                                var returnType = binder.GetStreamItemType(invocationId);
                                 item = BindType(itemsToken.RootElement, returnType);
                             }
                             catch (JsonReaderException ex)
@@ -487,7 +451,7 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                 case InvocationMessage m:
                     WriteMessageType(ref writer, HubProtocolConstants.InvocationMessageType);
                     WriteHeaders(ref writer, m);
-                    WriteInvocationMessage(stream, m, ref writer);
+                    WriteInvocationMessage(m, ref writer);
                     break;
                 case StreamInvocationMessage m:
                     WriteMessageType(ref writer, HubProtocolConstants.StreamInvocationMessageType);
@@ -545,9 +509,9 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
             }
             else if (message.HasResult)
             {
-                // TODO: JsonElement.WriteTo(ref writer, ResultPropertyNameBytes, escape: false);
-                var bytes = JsonSerializer.ToBytes(message.Result, message.Result.GetType());
-                // TODO: JsonElement.WriteValueTo(ref writer, bytes, escape: false);
+                var bytes = JsonSerializer.ToBytes(message.Result, message.Result?.GetType());
+                using var token = JsonDocument.Parse(bytes);
+                token.RootElement.WriteAsProperty(ResultPropertyNameBytes, ref writer);
             }
         }
 
@@ -559,17 +523,18 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
         private void WriteStreamItemMessage(StreamItemMessage message, ref Utf8JsonWriter writer)
         {
             WriteInvocationId(message, ref writer);
-            // TODO: JsonElement.WriteTo(ref writer, ItemPropertyNameBytes, escape: false);
-            var bytes = JsonSerializer.ToBytes(message.Item, message.Item.GetType());
-            // TODO: JsonElement.WriteValueTo(ref writer, bytes, escape: false);
+
+            var bytes = JsonSerializer.ToBytes(message.Item, message.Item?.GetType());
+            using var token = JsonDocument.Parse(bytes);
+            token.RootElement.WriteAsProperty(ItemPropertyNameBytes, ref writer);
         }
 
-        private void WriteInvocationMessage(IBufferWriter<byte> stream, InvocationMessage message, ref Utf8JsonWriter writer)
+        private void WriteInvocationMessage(InvocationMessage message, ref Utf8JsonWriter writer)
         {
             WriteInvocationId(message, ref writer);
             writer.WriteString(TargetPropertyNameBytes, message.Target);
 
-            WriteArguments(stream, message.Arguments, ref writer);
+            WriteArguments(message.Arguments, ref writer);
 
             WriteStreamIds(message.StreamIds, ref writer);
         }
@@ -579,7 +544,7 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
             WriteInvocationId(message, ref writer);
             writer.WriteString(TargetPropertyNameBytes, message.Target);
 
-            //WriteArguments(message.Arguments, ref writer);
+            WriteArguments(message.Arguments, ref writer);
 
             WriteStreamIds(message.StreamIds, ref writer);
         }
@@ -592,28 +557,28 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
             }
         }
 
-        private void WriteArguments(IBufferWriter<byte> stream, object[] arguments, ref Utf8JsonWriter writer)
+        private void WriteArguments(object[] arguments, ref Utf8JsonWriter writer)
         {
             writer.WriteStartArray(ArgumentsPropertyNameBytes);
-            writer.Flush(isFinalBlock: false);
             foreach (var argument in arguments)
             {
-                var bytes = JsonSerializer.ToBytes(argument, argument.GetType());
-                WriteRaw(stream, bytes, ref writer);
+                var type = argument?.GetType();
+                if (type == typeof(DateTime))
+                {
+                    writer.WriteStringValue((DateTime)argument);
+                }
+                else if (type == typeof(DateTimeOffset))
+                {
+                    writer.WriteStringValue((DateTimeOffset)argument);
+                }
+                else
+                {
+                    var bytes = JsonSerializer.ToBytes(argument, argument?.GetType());
+                    using var token = JsonDocument.Parse(bytes);
+                    token.RootElement.WriteAsValue(ref writer);
+                }
             }
             writer.WriteEndArray();
-        }
-
-        private void WriteRaw(IBufferWriter<byte> stream, byte[] bytes, ref Utf8JsonWriter writer)
-        {
-            // Super hack (only works for small payloads)
-            // First write a string to the writer (slicing 2 for the quotes)
-            // to advance it's internal buffer
-            writer.WriteStringValue(bytes.AsSpan().Slice(0, bytes.Length - 2), escape: false);
-            // Then write the real bytes to the real buffer
-            stream.Write(bytes);
-            // Don't advance the stream when writing, so the writer advances correctly later
-            stream.Advance(-bytes.Length);
         }
 
         private void WriteStreamIds(string[] streamIds, ref Utf8JsonWriter writer)
@@ -624,7 +589,6 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
             }
 
             writer.WriteStartArray(StreamIdsPropertyNameBytes);
-            writer.WriteStartArray();
             foreach (var streamId in streamIds)
             {
                 writer.WriteStringValue(streamId);

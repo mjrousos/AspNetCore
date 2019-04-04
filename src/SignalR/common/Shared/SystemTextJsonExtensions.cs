@@ -4,7 +4,6 @@
 using System;
 using System.Buffers;
 using System.IO;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -32,7 +31,12 @@ namespace Microsoft.AspNetCore.Internal
 
         public static string GetTokenString(this ref Utf8JsonReader reader)
         {
-            switch (reader.TokenType)
+            return GetTokenString(reader.TokenType);
+        }
+
+        public static string GetTokenString(JsonTokenType tokenType)
+        {
+            switch (tokenType)
             {
                 case JsonTokenType.None:
                     break;
@@ -45,7 +49,7 @@ namespace Microsoft.AspNetCore.Internal
                 default:
                     break;
             }
-            return reader.TokenType.ToString();
+            return tokenType.ToString();
         }
 
         public static void EnsureArrayStart(this ref Utf8JsonReader reader)
