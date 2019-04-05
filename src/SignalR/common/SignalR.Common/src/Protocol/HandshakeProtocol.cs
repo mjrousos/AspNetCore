@@ -178,13 +178,11 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
             {
                 if (reader.TokenType == JsonTokenType.PropertyName)
                 {
-                    var memberName = reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan;
-
-                    if (memberName.SequenceEqual(ProtocolPropertyNameBytes))
+                    if (reader.TextEquals(ProtocolPropertyNameBytes))
                     {
                         protocol = reader.ReadAsString(ProtocolPropertyName);
                     }
-                    else if (memberName.SequenceEqual(ProtocolVersionPropertyNameBytes))
+                    else if (reader.TextEquals(ProtocolVersionPropertyNameBytes))
                     {
                         protocolVersion = reader.ReadAsInt32(ProtocolVersionPropertyName);
                     }

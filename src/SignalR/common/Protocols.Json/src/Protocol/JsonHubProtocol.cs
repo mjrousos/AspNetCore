@@ -228,8 +228,14 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                                 try
                                 {
                                     var itemType = binder.GetStreamItemType(id);
-                                    using var token = JsonDocument.ParseValue(ref reader);
-                                    item = BindType(token.RootElement, itemType);
+                                    if (reader.TokenType == JsonTokenType.Null)
+                                    {
+                                    }
+                                    else
+                                    {
+                                        using var token = JsonDocument.ParseValue(ref reader);
+                                        item = BindType(token.RootElement, itemType);
+                                    }
                                 }
                                 catch (Exception ex)
                                 {
@@ -258,8 +264,14 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                                     try
                                     {
                                         var paramTypes = binder.GetParameterTypes(target);
-                                        using var token = JsonDocument.ParseValue(ref reader);
-                                        arguments = BindTypes(token.RootElement, paramTypes);
+                                        if (reader.TokenType == JsonTokenType.Null)
+                                        {
+                                        }
+                                        else
+                                        {
+                                            using var token = JsonDocument.ParseValue(ref reader);
+                                            arguments = BindTypes(token.RootElement, paramTypes);
+                                        }
                                     }
                                     catch (Exception ex)
                                     {
@@ -573,7 +585,7 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                 }
                 else
                 {
-                    var bytes = JsonSerializer.ToBytes(argument, argument?.GetType());
+                    var bytes = JsonSerializer.ToBytes(argument, type);
                     using var token = JsonDocument.Parse(bytes);
                     token.RootElement.WriteAsValue(ref writer);
                 }
@@ -713,6 +725,10 @@ namespace Microsoft.AspNetCore.SignalR.Protocol
                 // TODO: return jsonObject.GetDateTimeOffset();
             }
 
+            if (jsonObject.Type == JsonValueType.Null)
+            {
+                return null;
+            }
             return JsonSerializer.Parse(jsonObject.GetRawText(), type);
         }
 
