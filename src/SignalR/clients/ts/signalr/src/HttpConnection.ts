@@ -278,7 +278,7 @@ export class HttpConnection implements IConnection {
             }
 
             // stop() is waiting on us via this.startInternalPromise so keep this.transport around so it can clean up.
-            // This is the only case startInternal can exit in neither the connected nor disconnected state because stopConnection()
+            // This is the only case startInternal can exit in either the connected nor disconnected state because stopConnection()
             // will transition to the disconnected state. start() will wait for the transition using the stopPromise.
         } catch (e) {
             this.logger.log(LogLevel.Error, "Failed to start the connection: " + e);
